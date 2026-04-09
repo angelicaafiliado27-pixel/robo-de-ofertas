@@ -4,12 +4,13 @@ import threading
 import http.server
 import socketserver
 
-# --- CONFIGURAÇÕES DE TESTE ---
+# --- CONFIGURAÇÕES ---
 TOKEN_TELEGRAM = "8714375855:AAHULALUU7p9hcp1YUSBAl_bDn5vPbzvZdM"
+# Tentaremos postar no canal público primeiro
 CANAL_DESTINO = "@ofertasmaepratica"
 
 def enviar_teste( ):
-    print("Enviando mensagem de teste para o Telegram...")
+    print("\n--- INICIANDO TESTE DE ENVIO ---")
     url = f"https://api.telegram.org/bot{TOKEN_TELEGRAM}/sendMessage"
     payload = {
         "chat_id": CANAL_DESTINO, 
@@ -19,14 +20,18 @@ def enviar_teste( ):
     try:
         response = requests.post(url, json=payload )
         print(f"Resposta do Telegram: {response.text}")
+        if response.status_code == 200:
+            print("✅ SUCESSO! A mensagem deve ter aparecido no seu Telegram.")
+        else:
+            print("❌ ERRO: Verifique se o robô é administrador do canal.")
     except Exception as e:
         print(f"Erro ao enviar: {e}")
 
 if __name__ == "__main__":
-    # Inicia o servidor para o Render não dar erro
+    # Servidor para o Render
     threading.Thread(target=lambda: socketserver.TCPServer(("", 8080), http.server.SimpleHTTPRequestHandler ).serve_forever(), daemon=True).start()
     
-    # Envia a mensagem de teste na hora
+    # Tenta enviar a mensagem de teste
     enviar_teste()
     
     # Mantém o robô vivo
