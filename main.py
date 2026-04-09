@@ -5,47 +5,50 @@ import threading
 import http.server
 import socketserver
 
-# --- SUAS TAGS JÁ CONFIGURADAS ---
-TAGS_AFILIADO = {
+# --- CONFIGURAÇÕES FINAIS ---
+API_URL = "https://evolution-api-production-6079.up.railway.app"
+API_KEY = "123456" # Use a chave que você definiu no Railway (se mudou, coloque aqui )
+GROUP_ID = "EvCF9MRL4PGINDWiKlTgA8@g.us"
+INSTANCE = "meu-robo"
+
+TAGS = {
     'amazon': 'maepratica0b-20',
     'mercadolivre': 'aa20260106122411',
     'shopee': '18337860663',
     'magalu': 'magazinecasababylovers'
 }
 
-CANAL_FONTE = "https://t.me/s/jgtechofertas"
+def enviar_whatsapp(texto):
+    url = f"{API_URL}/message/sendText/{INSTANCE}"
+    headers = {"apikey": API_KEY, "Content-Type": "application/json"}
+    payload = {"number": GROUP_ID, "text": texto}
+    try:
+        requests.post(url, json=payload, headers=headers)
+    except: pass
 
-# --- FUNÇÃO DO ROBÔ (O QUE ELE FAZ ) ---
-def buscar_e_postar():
+def buscar_ofertas():
     print("🚀 Robô de Ofertas Iniciado!")
     while True:
-        print(f"[{time.strftime('%H:%M:%S')}] Verificando novas ofertas...")
         try:
-            response = requests.get(CANAL_FONTE, headers={'User-Agent': 'Mozilla/5.0'})
-            soup = BeautifulSoup(response.text, 'html.parser')
+            res = requests.get("https://t.me/s/jgtechofertas", headers={'User-Agent': 'Mozilla/5.0'} )
+            soup = BeautifulSoup(res.text, 'html.parser')
             mensagens = soup.find_all('div', class_='tgme_widget_message_bubble')
-            
             for msg in mensagens:
                 texto_elem = msg.find('div', class_='tgme_widget_message_text')
                 if not texto_elem: continue
                 links = [a['href'] for a in texto_elem.find_all('a', href=True)]
                 if links:
-                    print(f"Oferta encontrada! Link: {links[0]}")
-                    # Aqui você conectará sua API de WhatsApp depois
-        except Exception as e:
-            print(f"Erro: {e}")
-        time.sleep(300)
+                    # Exemplo simples de conversão (Amazon)
+                    link = links[0]
+                    if "amazon" in link: link += f"?tag={TAGS['amazon']}"
+                    msg_final = f"🔥 *OFERTA ENCONTRADA!*\n\n🔗 *COMPRE AQUI:* {link}"
+                    enviar_whatsapp(msg_final)
+        except: pass
+        time.sleep(600)
 
-# --- SERVIDOR DE MENTIRA (PARA O RENDER NÃO DAR ERRO) ---
-def rodar_servidor_falso():
-    PORT = 8080
-    Handler = http.server.SimpleHTTPRequestHandler
-    with socketserver.TCPServer(("", PORT ), Handler) as httpd:
-        print(f"Servidor de mentira rodando na porta {PORT}" )
-        httpd.serve_forever( )
+def rodar_servidor():
+    socketserver.TCPServer(("", 8080), http.server.SimpleHTTPRequestHandler ).serve_forever()
 
 if __name__ == "__main__":
-    # Inicia o robô em uma linha separada
-    threading.Thread(target=buscar_e_postar, daemon=True).start()
-    # Inicia o servidor que o Render exige
-    rodar_servidor_falso()
+    threading.Thread(target=buscar_ofertas, daemon=True).start()
+    rodar_servidor()
