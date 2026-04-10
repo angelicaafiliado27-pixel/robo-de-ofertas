@@ -6,17 +6,10 @@ import socketserver
 from bs4 import BeautifulSoup
 
 # --- CONFIGURAÇÕES DO SEU ROBÔ ---
-# Token do seu bot Maepraticabot
 TOKEN_TELEGRAM = "8714375855:AAHULALUU7p9hcp1YUSBAl_bDn5vPbzvZdM"
-
-# Como o seu grupo agora é PÚBLICO, usamos o @ do link que você criou
-# Certifique-se de que o link do seu grupo seja t.me/ofertasmaepratica
 CANAL_DESTINO = "@ofertasmaepratica" 
-
-# Fonte das melhores ofertas (Canal Mestre )
 CANAL_FONTE = "https://t.me/s/jgtechofertas" 
 
-# Suas Tags de Afiliado (Já configuradas conforme sua estrutura )
 TAGS = {
     'amazon': 'maepratica0b-20',
     'mercadolivre': 'aa20260106122411',
@@ -24,25 +17,35 @@ TAGS = {
     'magalu': 'magazinecasababylovers'
 }
 
+# --- SUPER LISTA DE FILTROS: MÃE PRÁTICA ---
+PALAVRAS_CHAVE = [
+    # Cozinha & Organização
+    'geladeira', 'pote hermético', 'escorredor', 'tempero', 'utensílio', 'cortador', 'dispenser',
+    'air fryer', 'fritadeira', 'cafeteira', 'liquidificador', 'mixer', 'grill', 'sanduicheira',
+    'panela elétrica', 'chaleira', 'forno', 'processador', 'espremedor',
+    # Lavanderia & Limpeza
+    'lavanderia', 'cesto', 'mop', 'rodo spray', 'removedor de pelos', 'limpeza', 'vassoura',
+    'máquina de lavar', 'lava e seca', 'tanquinho', 'aspirador', 'robô aspirador', 'vaporizador',
+    # Banheiro & Quarto
+    'banheiro', 'shampoo', 'escova', 'saboneteira', 'prateleira', 'tapete', 'caixa organizadora',
+    'guarda roupa', 'colmeia', 'cabide', 'bolsa', 'maquiagem', 'joia',
+    # Beleza & Autocuidado
+    'espelho led', 'massageador', 'necessaire', 'escova secadora', 'skincare', 'secador',
+    'chapinha', 'modelador', 'alisadora', 'depilador',
+    # Utilidades Virais & Dores (O que vende muito! )
+    'viral', 'achadinho', 'indispensável', 'útil', 'utilidade doméstica', 'gadget',
+    'facilita a rotina', 'inteligente', 'economiza tempo', 'organizada', 'bagunça',
+    'prático para mães', 'apartamento', 'economiza espaço', 'ventilador', 'umidificador'
+]
+
 def enviar_telegram(mensagem):
-    """Envia a mensagem para o seu grupo público do Telegram"""
     url = f"https://api.telegram.org/bot{TOKEN_TELEGRAM}/sendMessage"
-    payload = {
-        "chat_id": CANAL_DESTINO, 
-        "text": mensagem, 
-        "parse_mode": "Markdown",
-        "disable_web_page_preview": False
-    }
+    payload = {"chat_id": CANAL_DESTINO, "text": mensagem, "parse_mode": "Markdown"}
     try:
-        response = requests.post(url, json=payload )
-        print(f"Status Envio: {response.status_code} - {response.text}")
-        return response.status_code == 200
-    except Exception as e:
-        print(f"Erro ao enviar para o Telegram: {e}")
-        return False
+        requests.post(url, json=payload )
+    except: pass
 
 def converter_link(link_original):
-    """Aplica suas tags de afiliado automaticamente nos links encontrados"""
     link = link_original.lower()
     if 'amazon.com.br' in link:
         conector = '&' if '?' in link else '?'
@@ -54,62 +57,54 @@ def converter_link(link_original):
         conector = '&' if '?' in link else '?'
         return f"{link_original}{conector}utm_source=afiliado&utm_campaign={TAGS['mercadolivre']}"
     elif 'magazineluiza.com.br' in link:
-        # Para Magalu, geralmente redirecionamos para sua loja magazinevoce
         return f"https://www.magazinevoce.com.br/{TAGS['magalu']}/"
     return link_original
 
 def buscar_ofertas( ):
-    """Monitora o canal fonte e envia novas ofertas a cada 1 hora"""
-    print("🚀 Robô Maepratica: Monitoramento Iniciado!")
+    print("🚀 Robô Mãe Prática: Curadoria Ativada!")
     ultima_oferta = ""
     
     while True:
         try:
-            print("🔎 Verificando novas ofertas relâmpago...")
-            # Acessa a versão web do canal fonte para fazer o scraping
             res = requests.get(CANAL_FONTE, headers={'User-Agent': 'Mozilla/5.0'})
             soup = BeautifulSoup(res.text, 'html.parser')
-            
-            # Encontra as bolhas de mensagem do Telegram
             mensagens = soup.find_all('div', class_='tgme_widget_message_bubble')
             
             if mensagens:
-                msg = mensagens[-1] # Pega a oferta mais recente
+                msg = mensagens[-1]
                 texto_elem = msg.find('div', class_='tgme_widget_message_text')
                 
                 if texto_elem:
-                    # Extrai todos os links da mensagem
-                    links = [a['href'] for a in texto_elem.find_all('a', href=True)]
+                    texto_oferta = texto_elem.get_text().lower()
                     
-                    if links and links[0] != ultima_oferta:
-                        link_original = links[0]
-                        link_com_comissao = converter_link(link_original)
+                    # FILTRO INTELIGENTE DE CATEGORIAS
+                    e_do_nicho = any(palavra in texto_oferta for palavra in PALAVRAS_CHAVE)
+                    
+                    if e_do_nicho:
+                        links = [a['href'] for a in texto_elem.find_all('a', href=True)]
+                        if links and links[0] != ultima_oferta:
+                            link_com_comissao = converter_link(links[0])
+                            
+                            msg_final = (
+                                "✨ *ACHADINHO MÃE PRÁTICA!* ✨\n\n"
+                                f"{texto_elem.get_text()[:250]}...\n\n"
+                                f"🔗 *COMPRE AQUI:* {link_com_comissao}\n\n"
+                                "⚠️ *Aproveite! Oferta por tempo limitado.*"
+                            )
+                            
+                            enviar_telegram(msg_final)
+                            ultima_oferta = links[0]
+                            print(f"✅ Oferta de Nicho enviada: {links[0]}")
+                    else:
+                        print("⏭️ Oferta ignorada (não faz parte das categorias selecionadas).")
                         
-                        # Monta a mensagem final para o seu grupo
-                        msg_final = (
-                            "🔥 *OFERTA RELÂMPAGO ENCONTRADA!*\n\n"
-                            "🔗 *COMPRE AQUI COM DESCONTO:*\n"
-                            f"{link_com_comissao}\n\n"
-                            "⚠️ *Aproveite! Oferta por tempo limitado ou até durar o estoque.*"
-                        )
-                        
-                        if enviar_telegram(msg_final):
-                            ultima_oferta = link_original
-                            print(f"✅ Oferta enviada com sucesso: {link_original}")
-            
         except Exception as e:
-            print(f"Erro durante o monitoramento: {e}")
+            print(f"Erro: {e}")
             
-        # Espera 1 hora (3600 segundos) para a próxima verificação
-        # Conforme solicitado: monitoramento de hora em hora
-        time.sleep(3600) 
+        # Verifica a cada 10 minutos para não perder os virais!
+        time.sleep(600) 
 
 if __name__ == "__main__":
-    # Servidor HTTP simples para manter o Render 'Live' (Porta 8080)
     threading.Thread(target=lambda: socketserver.TCPServer(("", 8080), http.server.SimpleHTTPRequestHandler ).serve_forever(), daemon=True).start()
-    
-    # Mensagem de inicialização para confirmar que o robô está online no grupo público
-    enviar_telegram("🤖 *Robô Maepratica ONLINE!* \n\nAgora seu grupo é público e estou monitorando ofertas a cada 1 hora. 🚀")
-    
-    # Inicia o loop principal de busca de ofertas
+    enviar_telegram("🤖 *Robô Mãe Prática 100% CONFIGURADO!* \n\nEstou pronto para garimpar os melhores achadinhos e utilidades para o seu grupo. 🏠✨🚀")
     buscar_ofertas()
