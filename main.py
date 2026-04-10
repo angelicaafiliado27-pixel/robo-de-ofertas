@@ -17,7 +17,20 @@ TAGS = {
     'magalu': 'magazinecasababylovers'
 }
 
-def enviar_telegram(mensagem ):
+# FILTROS: MÃE PRÁTICA + SUPER OFERTAS (ELETRÔNICOS E SUCESSOS )
+PALAVRAS_CHAVE = [
+    # Seu Nicho (Casa, Organização, Infantil)
+    'organizador', 'pote', 'mop', 'aspirador', 'airfryer', 'fritadeira', 'cafeteira', 
+    'panela', 'geladeira', 'maquina', 'lavar', 'infantil', 'bebe', 'brinquedo', 
+    'utilidade', 'achadinho', 'viral', 'pratico', 'facilita', 'cozinha', 'lavanderia',
+    'banheiro', 'quarto', 'limpeza', 'shampoo', 'fralda', 'lenço', 'cesto', 'varal',
+    # Super Ofertas (Eletrônicos e Itens de Desejo)
+    'celular', 'smartphone', 'iphone', 'samsung', 'xiaomi', 'notebook', 'laptop',
+    'tablet', 'fone', 'bluetooth', 'smartwatch', 'televisão', 'smart tv', 'alexa',
+    'echo dot', 'kindle', 'perfume', 'maquiagem', 'skincare', 'beleza'
+]
+
+def enviar_telegram(mensagem):
     url = f"https://api.telegram.org/bot{TOKEN_TELEGRAM}/sendMessage"
     payload = {"chat_id": CANAL_DESTINO, "text": mensagem, "parse_mode": "Markdown"}
     try:
@@ -35,12 +48,13 @@ def converter_link(link_original):
     elif 'mercadolivre.com.br' in link:
         conector = '&' if '?' in link else '?'
         return f"{link_original}{conector}utm_source=afiliado&utm_campaign={TAGS['mercadolivre']}"
-    elif 'magazineluiza.com.br' in link:
+    elif 'magazineluiza.com.br' in link or 'magalu' in link:
+        # Redireciona para sua loja Magazine Você
         return f"https://www.magazinevoce.com.br/{TAGS['magalu']}/"
     return link_original
 
 def buscar_ofertas( ):
-    print("🔎 Buscando qualquer oferta recente para teste...")
+    print("🚀 Robô Mãe Prática: Modo Híbrido Ativado!")
     ultima_oferta = ""
     
     while True:
@@ -50,16 +64,20 @@ def buscar_ofertas( ):
             mensagens = soup.find_all('div', class_='tgme_widget_message_bubble')
             
             if mensagens:
-                # Pega a mensagem mais recente que tenha um link
-                for msg in reversed(mensagens): 
-                    texto_elem = msg.find('div', class_='tgme_widget_message_text')
-                    if texto_elem:
+                msg = mensagens[-1]
+                texto_elem = msg.find('div', class_='tgme_widget_message_text')
+                
+                if texto_elem:
+                    texto_oferta = texto_elem.get_text().lower()
+                    
+                    # FILTRO HÍBRIDO: NICHO + SUPER OFERTAS
+                    if any(p in texto_oferta for p in PALAVRAS_CHAVE):
                         links = [a['href'] for a in texto_elem.find_all('a', href=True)]
                         if links and links[0] != ultima_oferta:
                             link_com_comissao = converter_link(links[0])
                             
                             msg_final = (
-                                "✨ *OFERTINHA DA ANGÉLICA!* ✨\n\n"
+                                "✨ *OFERTINHA MÃE PRÁTICA!* ✨\n\n"
                                 f"{texto_elem.get_text()[:250]}...\n\n"
                                 f"🔗 *COMPRE AQUI:* {link_com_comissao}\n\n"
                                 "⚠️ *Aproveite! Oferta por tempo limitado.*"
@@ -67,15 +85,12 @@ def buscar_ofertas( ):
                             
                             enviar_telegram(msg_final)
                             ultima_oferta = links[0]
-                            print(f"✅ Oferta enviada: {links[0]}")
-                            break 
         except Exception as e:
             print(f"Erro: {e}")
             
-        # Verifica a cada 2 minutos para o teste ser rápido!
-        time.sleep(120) 
+        time.sleep(600) # Verifica a cada 10 minutos
 
 if __name__ == "__main__":
     threading.Thread(target=lambda: socketserver.TCPServer(("", 8080), http.server.SimpleHTTPRequestHandler ).serve_forever(), daemon=True).start()
-    enviar_telegram("🤖 *MODO DE TESTE ATIVADO!* \n\nPostando a próxima oferta que aparecer para confirmar o funcionamento. 🚀")
+    enviar_telegram("🤖 *Robô Mãe Prática 100% CONFIGURADO!* \n\nMonitorando Casa, Organização e Super Ofertas de Eletrônicos. 🏠📱✨")
     buscar_ofertas()
